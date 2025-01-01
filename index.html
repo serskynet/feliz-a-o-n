@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            height: 100vh;
+            background: linear-gradient(45deg, 
+                #000000,
+                #0a0a2a,
+                #120326,
+                #000000
+            );
+            background-size: 400% 400%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            animation: gradientBG 20s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50% }
+            50% { background-position: 100% 50% }
+            100% { background-position: 0% 50% }
+        }
+
+        .container {
+            text-align: center;
+            z-index: 1;
+            transform-style: preserve-3d;
+            padding: 20px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.1);
+            will-change: transform;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .title {
+            font-size: clamp(3rem, 10vw, 8rem);
+            background: linear-gradient(90deg, 
+                #ff0000,
+                #ff6600,
+                #ffcc00,
+                #33ff00,
+                #00ffcc,
+                #0066ff,
+                #cc00ff
+            );
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 4px;
+            will-change: transform;
+            animation: gradient 8s linear infinite;
+            transform: translateZ(0);
+        }
+
+        .subtitle {
+            font-size: clamp(1.5rem, 5vw, 3rem);
+            background: linear-gradient(90deg, #fff, #88ffff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-top: 20px;
+            will-change: transform;
+            animation: pulse 2s ease-in-out infinite;
+            transform: translateZ(0);
+        }
+
+        @keyframes gradient {
+            to { background-position: 300% 50% }
+        }
+
+        @keyframes pulse {
+            50% { transform: scale(1.05) translateZ(0); }
+        }
+
+        @keyframes float {
+            50% { transform: translateY(-20px) rotate(2deg); }
+        }
+
+        .star {
+            position: fixed;
+            width: 2px;
+            height: 2px;
+            background: #fff;
+            border-radius: 50%;
+            opacity: 0;
+            will-change: transform, opacity;
+            animation: twinkle var(--duration, 1s) infinite ease-in-out var(--delay, 0s);
+        }
+
+        @keyframes twinkle {
+            50% { opacity: 0.8; transform: scale(1.5) translateZ(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">¡Feliz 2025!</h1>
+        <p class="subtitle">"Agradezco cada instante compartido y deseo que este nuevo año traiga muchos más. ¡Felicidades!"</p>
+    </div>
+
+    <script>
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', {
+            alpha: false,
+            desynchronized: true,
+            willReadFrequently: false
+        });
+        
+        canvas.style.cssText = 'position:fixed;top:0;left:0;pointer-events:none;z-index:0;';
+        document.body.appendChild(canvas);
+
+        let width, height;
+        const particles = new Set();
+        const TWO_PI = Math.PI * 2;
+        
+        const colors = [
+            '#ff0000', '#ff4400', '#ff8800', '#ffbb00', 
+            '#ffff00', '#44ff00', '#00ff88', '#00ffff', 
+            '#0088ff', '#0044ff', '#8800ff', '#ff00ff', 
+            '#ff0088', '#ffffff'
+        ];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        
+        resize();
+        window.addEventListener('resize', resize, { passive: true });
+
+        class Particle {
+            constructor(x, y, angle, velocity, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = Math.cos(angle) * velocity;
+                this.vy = Math.sin(angle) * velocity;
+                this.color = color;
+                this.alpha = 1;
+                this.life = 100;
+                this.size = 2 + Math.random() * 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.15;
+                this.alpha -= 0.01;
+                this.life--;
+                this.size *= 0.99;
+                return this.life > 0 && this.alpha > 0;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, TWO_PI);
+                
+                const gradient = ctx.createRadialGradient(
+                    this.x, this.y, 0,
+                    this.x, this.y, this.size
+                );
+                gradient.addColorStop(0, this.color + Math.floor(this.alpha * 255).toString(16).padStart(2, '0'));
+                gradient.addColorStop(1, this.color + '00');
+                
+                ctx.fillStyle = gradient;
+                ctx.fill();
+            }
+        }
+
+        function createFirework(x, y) {
+            const particleCount = 50;
+            const baseVelocity = 10;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (TWO_PI * i) / particleCount;
+                const velocity = baseVelocity * (0.8 + Math.random() * 0.4);
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                particles.add(new Particle(x, y, angle, velocity, color));
+            }
+        }
+
+        let lastFrame = 0;
+        const FRAME_TIME = 1000 / 60;
+
+        function render(currentTime) {
+            if (currentTime - lastFrame < FRAME_TIME) {
+                requestAnimationFrame(render);
+                return;
+            }
+            
+            lastFrame = currentTime;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(0, 0, width, height);
+            ctx.globalCompositeOperation = 'lighter';
+            
+            for (const particle of particles) {
+                if (!particle.update()) {
+                    particles.delete(particle);
+                    continue;
+                }
+                particle.draw();
+            }
+            
+            requestAnimationFrame(render);
+        }
+
+        requestAnimationFrame(render);
+
+        const fragment = document.createDocumentFragment();
+        const starCount = Math.min(70, Math.floor(width * height / 15000));
+        
+        for (let i = 0; i < starCount; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + 'vw';
+            star.style.top = Math.random() * 100 + 'vh';
+            star.style.setProperty('--duration', Math.random() * 2 + 1 + 's');
+            star.style.setProperty('--delay', Math.random() * 2 + 's');
+            fragment.appendChild(star);
+        }
+        document.body.appendChild(fragment);
+
+        let lastClick = 0;
+        document.addEventListener('click', (e) => {
+            const now = performance.now();
+            if (now - lastClick > 50) {
+                createFirework(e.clientX, e.clientY);
+                lastClick = now;
+            }
+        }, { passive: true });
+
+        function autoFireworks() {
+            if (particles.size < 300) {
+                const x = Math.random() * width;
+                const y = height * 0.3 + Math.random() * height * 0.2;
+                createFirework(x, y);
+            }
+            setTimeout(autoFireworks, 800 + Math.random() * 400);
+        }
+
+        setTimeout(autoFireworks, 1000);
+    </script>
+</body>
+</html>
